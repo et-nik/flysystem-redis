@@ -97,11 +97,6 @@ class RedisAdapter extends AbstractAdapter
     {
         $info = $this->getPathInfo($path);
 
-        if ( ! $this->has($path))
-        {
-            throw new \League\Flysystem\FileNotFoundException("File not found at path: {$info['path']}");
-        }
-
         $data = json_decode($this->redis->hget($this->applyPathPrefix($info['dirname']), $info['basename']), TRUE);
 
         if ($data['type'] === 'file')
@@ -123,11 +118,6 @@ class RedisAdapter extends AbstractAdapter
     public function getMetadata($path)
     {
         $info = $this->getPathInfo($path);
-
-        if ( ! $this->has($path))
-        {
-            throw new \League\Flysystem\FileNotFoundException("File not found at path: {$info['path']}");
-        }
 
         $metadata = json_decode($this->redis->hget($this->applyPathPrefix($info['dirname']), $info['basename']), TRUE);
 
@@ -180,14 +170,7 @@ class RedisAdapter extends AbstractAdapter
      */
     public function update($path, $contents, Config $config)
     {
-        if ( ! $this->has($path))
-        {
-            return false;
-        }
-        else
-        {
-            return $this->write($path, $contents, $config);
-        }
+        return $this->write($path, $contents, $config);
     }
 
     /**
@@ -213,7 +196,7 @@ class RedisAdapter extends AbstractAdapter
     {
         $info = $this->getPathInfo($path);
 
-        if ($this->has($info['path']) && $this->getMetadata($info['path'])['type'] === 'file')
+        if ($this->getMetadata($info['path'])['type'] === 'file')
         {
             return $this->redis->hdel($this->applyPathPrefix($info['dirname']), $info['basename']) > 0;
         }
@@ -331,19 +314,12 @@ class RedisAdapter extends AbstractAdapter
     {
         $info = $this->getPathInfo($path);
 
-        if ($this->has($info['path']))
-        {
-            $data = json_decode($this->redis->hget($this->applyPathPrefix($info['dirname']), $info['basename']), TRUE);
-            $data['visibility'] = $visibility;
+        $data = json_decode($this->redis->hget($this->applyPathPrefix($info['dirname']), $info['basename']), TRUE);
+        $data['visibility'] = $visibility;
 
-            if (in_array($this->redis->hset($this->applyPathPrefix($info['dirname']), $info['basename'], json_encode($data)), [0, 1]))
-            {
-                return $data;
-            }
-            else
-            {
-                return false;
-            }
+        if (in_array($this->redis->hset($this->applyPathPrefix($info['dirname']), $info['basename'], json_encode($data)), [0, 1]))
+        {
+            return $data;
         }
         else
         {
